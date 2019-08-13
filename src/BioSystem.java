@@ -1,5 +1,8 @@
+import org.apache.commons.math3.distribution.PoissonDistribution;
+
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.stream.IntStream;
 
 class BioSystem {
 
@@ -12,6 +15,7 @@ class BioSystem {
     private int immigration_index;
 
     private double deterioration_rate;
+    private double biofilm_threshold;
     private double immigration_rate = 0.8;
     private double tau = 0.01;
     private double delta_x = 5.;
@@ -19,7 +23,7 @@ class BioSystem {
     private int n_detachments = 0, n_deaths = 0, n_replications = 0, n_immigrations = 0;
 
 
-    public BioSystem(double deterioration_rate){
+    public BioSystem(double deterioration_rate, double biofilm_threshold){
         //this constructor is used purely for the detachment rate determination in the biocide free environment
         this.alpha = 0.;
         this.c_max = 0.;
@@ -28,14 +32,16 @@ class BioSystem {
         this.exit_time = 0.;
         this.immigration_index = 0;
         this.deterioration_rate = deterioration_rate;
+        this.biofilm_threshold = biofilm_threshold;
 
-        microhabitats.add(new Microhabitat(calc_C_i(0, this.c_max, this.alpha, delta_x), scale, sigma));
+        microhabitats.add(new Microhabitat(calc_C_i(0, c_max, alpha, delta_x), scale, sigma, biofilm_threshold));
 
         microhabitats.get(0).setSurface();
         microhabitats.get(0).addARandomBacterium_x_N(5);
     }
 
-
+    private double getDeterioration_rate(){return deterioration_rate;}
+    private double getBiofilm_threshold(){return biofilm_threshold;}
     private int getN_detachments(){return n_detachments;}
     private int getN_deaths(){return n_deaths;}
     private int getN_replications(){return n_replications;}
@@ -103,7 +109,7 @@ class BioSystem {
             microhabitats.get(immigration_index).setImmigration_zone(false);
 
             int i = microhabitats.size();
-            microhabitats.add(new Microhabitat(BioSystem.calc_C_i(i, c_max, alpha, delta_x), scale, sigma));
+            microhabitats.add(new Microhabitat(BioSystem.calc_C_i(i, c_max, alpha, delta_x), scale, sigma, biofilm_threshold));
             immigration_index = i;
             microhabitats.get(immigration_index).setImmigration_zone(true);
         }
@@ -121,6 +127,200 @@ class BioSystem {
 
         double tau_step = tau;
 
+        int system_size = microhabitats.size(); //this is all the microhabs in the system
+        int[][] replication_allocations;
+        int[][] death_allocations;
+        int[][] migration_allocations;
+        int[] detachment_allocations;
+        int[] original_popsizes;
+        int n_immigrants;
+
+        whileloop:
+        while(true){
+            replication_allocations = new int[system_size][];
+            death_allocations = new int[system_size][];
+            migration_allocations = new int[system_size][];
+            original_popsizes = new int[system_size];
+            detachment_allocations = new int[microhabitats.get(immigration_index).getN()];
+
+            for(int mh_index = 0; mh_index < system_size; mh_index++){
+
+                //we iterate through all the bacteria and
+                int mh_pop = microhabitats.get(mh_index).getN();
+                int[] n_replications = new int[mh_pop];
+                int[] n_deaths = new int[mh_pop];
+                int[] n_migrations = new int[mh_pop];
+
+                for(int bac_index = 0; bac_index < mh_pop; bac_index++){
+
+                    ////////// MIGRATIONS //////////////////////
+                    n_migrations[bac_index] = new PoissonDistribution(microhabitats.get(mh_index).migrate_rate()*tau_step).sample();
+
+                    if(n_migrations[bac_index] > 1){
+                        tau_step /= 2.;
+                        continue whileloop;
+                    }
+                    ////////////////////////////////////////////
+
+
+                    ///////////// DETACHMENTS /////////////////////////
+                    if(mh_index == immigration_index){
+                        detachment_allocations[bac_index] = new PoissonDistribution(deterioration_rate*tau_step).sample();
+
+                        if(detachment_allocations[bac_index] > 1){
+                            tau_step /= 2.;
+                            continue whileloop;
+                        }
+                        //if a bacteria is detaching then it can't migrate
+                        if(detachment_allocations[bac_index] != 0){
+                            n_migrations[bac_index] = 0;
+                        }
+                    }
+                    ////////////////////////////////////////////////////////
+
+                    ////////////////// REPLICATIONS AND DEATHS ///////////////////////////
+                    double[] g_and_d_rate = microhabitats.get(mh_index).replicationAndDeathRates(bac_index);
+                    double g_rate = g_and_d_rate[0], d_rate = g_and_d_rate[1];
+
+                    if(g_rate == 0.){
+                        n_replications[bac_index] = 0;
+                    }else{
+                        n_replications[bac_index] = new PoissonDistribution(g_rate*tau_step).sample();
+                    }
+
+
+                    if(d_rate==0.) {
+                        n_deaths[bac_index] = 0;
+                    }else{
+                        n_deaths[bac_index] = new PoissonDistribution(Math.abs(d_rate)*tau_step).sample();
+
+                        if(n_deaths[bac_index] > 1){
+                            tau_step /= 2.;
+                            continue whileloop;
+                        }
+                        //if a death is occurring, then that bacteria can't migrate or detach
+                        if(n_deaths[bac_index] !=0) {
+                            n_migrations[bac_index] = 0;
+                            if(mh_index == immigration_index) detachment_allocations[bac_index] = 0;
+                        }
+                    }
+                    /////////////////////////////////////////////////////////////////////////
+
+                }
+                replication_allocations[mh_index] = n_replications;
+                death_allocations[mh_index] = n_deaths;
+                migration_allocations[mh_index] = n_migrations;
+                original_popsizes[mh_index] = microhabitats.get(mh_index).getN();
+            }
+            n_immigrants = new PoissonDistribution(immigration_rate*tau_step).sample();
+            break;
+        }
+
+        ///// here we carry out the actions
+        for(int mh_index = 0; mh_index < system_size; mh_index++){
+            for(int bac_index = original_popsizes[mh_index]-1; bac_index >= 0; bac_index--){
+
+                if(death_allocations[mh_index][bac_index]!= 0) {
+                    microhabitats.get(mh_index).removeABacterium(bac_index);
+                    n_deaths++;
+                }
+
+                else{
+                    microhabitats.get(mh_index).replicateABacterium_x_N(bac_index, replication_allocations[mh_index][bac_index]);
+                    n_replications += replication_allocations[mh_index][bac_index];
+
+                    if(system_size > 1){
+                        if(migration_allocations[mh_index][bac_index] != 0) migrate(mh_index, bac_index);
+                    }
+
+                    if(mh_index == immigration_index){
+                        if(detachment_allocations[bac_index] != 0) {
+                            microhabitats.get(mh_index).removeABacterium(bac_index);
+                            n_detachments++;
+                        }
+                    }
+                }
+            }
+        }
+
+        immigrate(immigration_index, n_immigrants);
+        n_immigrations += n_immigrants;
+        updateBiofilmSize();
+        time_elapsed += tau_step;
+    }
+
+
+
+
+    public static void varyingDeteriorationAndThreshold(){
+        long startTime = System.currentTimeMillis();
+        //this method varies the deterioration rate and the threshold biofilm density, returns the thickness reached and the event counters
+        int n_reps = 15; //the number of times each simulation is repeated for
+        int n_measurements = 32; //the number of measurements taken for deterioration and rho
+
+        double K_min = 0.4, K_max = 0.9;
+        double K_increment = (K_max - K_min)/(double)n_measurements;
+        double det_min = 0.002, det_max = 0.004;
+        double det_increment = (det_max - det_min)/(double)n_measurements;
+        double duration = 240.; //10 days
+        String filename = String.format("varying_detRate-(%.4f-%.4f)_and_thresholdK-(%.4f-%.4f)", det_min, det_max, K_min, K_max);
+        String[] headers = new String[]{"K", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications"};
+
+        ArrayList<Databox> Databoxes = new ArrayList<>();
+
+        for(double thresh_K = K_min; thresh_K <= K_max; thresh_K+=K_increment){
+            for(double det_r = det_min; det_r <= det_max; det_r+=det_increment){
+                Databox db = BioSystem.varyingDeteriorationAndThreshold_subroutine(n_reps, duration, thresh_K, det_r);
+                Databoxes.add(db);
+            }
+        }
+
+
+        Toolbox.writeDataboxArraylistToFile("diagnostics", filename, headers, Databoxes);
+
+
+        long finishTime = System.currentTimeMillis();
+        String diff = Toolbox.millisToShortDHMS(finishTime - startTime);
+        System.out.println("results written to file");
+        System.out.println("Time taken: "+diff);
+    }
+
+
+
+    public static Databox varyingDeteriorationAndThreshold_subroutine(int n_reps, double duration, double thresh_K, double det_r){
+
+        Databox[] databoxes = new Databox[n_reps];
+
+        IntStream.range(0, n_reps).parallel().forEach(i -> databoxes[i] = BioSystem.varyingDeteriorationAndThreshold_subsubroutine(i, duration, thresh_K, det_r));
+
+        return Databox.averagedMeasurementsAndStDev(databoxes);
+    }
+
+
+
+
+    public static Databox varyingDeteriorationAndThreshold_subsubroutine(int i, double duration, double thresh_K, double det_r){
+        int nMeasurements = 10;
+        double interval = duration/nMeasurements;
+        boolean alreadyRecorded = false;
+
+        BioSystem bs = new BioSystem(det_r, thresh_K);
+        while(bs.time_elapsed <= (duration+0.001*interval)){
+            if((bs.getTimeElapsed()%interval >= 0. && bs.getTimeElapsed()%interval <= 0.02*interval) && !alreadyRecorded){
+
+                int total_N = bs.getTotalN();
+                System.out.println("K*: "+bs.biofilm_threshold+"\td_rate: "+bs.getDeterioration_rate()+"\trep : "+i+"\tt: "+bs.getTimeElapsed()+"\tpop size: "+total_N+"\tbf_edge: "+bs.getBiofilmEdge()+"\tsystem size: "+bs.getSystemSize()+"\tc_max: "+bs.c_max);
+                alreadyRecorded = true;
+            }
+
+            if(bs.getTimeElapsed()%interval >= 0.1*interval) alreadyRecorded = false;
+
+            bs.performAction();
+        }
+
+        double[] counters = new double[]{bs.getN_deaths(), bs.getN_detachments(), bs.getN_immigrations(), bs.getN_replications()};
+
+        return new Databox(bs.deterioration_rate, bs.biofilm_threshold, bs.getBiofilmThickness(), counters);
     }
 
 

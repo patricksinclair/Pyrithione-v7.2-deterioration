@@ -12,14 +12,14 @@ class Microhabitat {
     private boolean surface = false, biofilm_region, immigration_zone = false;
     private double max_gRate = 0.083; //max growth rate =  2/day
     private double uniform_dRate = 0.018; //all bacteria have this death rate
-    double biofilm_threshold = 0.8; //fraction occupied needed to transition to biofilm
+    double biofilm_threshold; //fraction occupied needed to transition to biofilm
     double b = 0.2; //migration rate
 
-    Microhabitat(double c, double scale, double sigma){
+    Microhabitat(double c, double scale, double sigma, double biofilm_threshold){
         this.c = c;
         double mu = Math.log(scale);
         this.population = new ArrayList<>(K);
-
+        this.biofilm_threshold = biofilm_threshold;
         this.MIC_distribution = new LogNormalDistribution(mu, sigma);
         this.biofilm_region = false;
     }
@@ -41,8 +41,8 @@ class Microhabitat {
     }
 
     boolean atBiofilmThreshold(){
-        double threshold_density = 0.8;
-        return fractionFull() >= threshold_density;}
+        //double threshold_density = 0.8;
+        return fractionFull() >= biofilm_threshold;}
 
     double migrate_rate(){
         //returns 0.5*b for the microhabitat next to the ship hull, to account for the inability to migrate into the hull
