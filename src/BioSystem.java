@@ -256,7 +256,7 @@ class BioSystem {
         long startTime = System.currentTimeMillis();
         //this method varies the deterioration rate and the threshold biofilm density, returns the thickness reached and the event counters
         int n_reps = 15; //the number of times each simulation is repeated for
-        int n_measurements = 32; //the number of measurements taken for deterioration and rho
+        int n_measurements = 20; //the number of measurements taken for deterioration and rho
 
         double K_min = 0.4, K_max = 0.9;
         double K_increment = (K_max - K_min)/(double)n_measurements;
