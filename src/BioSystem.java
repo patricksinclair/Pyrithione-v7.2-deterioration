@@ -360,7 +360,7 @@ class BioSystem {
 
         double tau_min = 0.01, tau_max = 1.2;
         double tau_increment = (tau_max - tau_min)/(double)n_measurements;
-        double duration = 10000.; //1000 hours
+        double duration = 1000.; //1000 hours
         String filename = String.format("varying_tauStep-(%.4f-%.4f)", tau_min, tau_max);
         String[] headers = new String[]{"tau", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
 
