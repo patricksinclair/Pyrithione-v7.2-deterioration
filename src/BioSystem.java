@@ -209,7 +209,7 @@ class BioSystem {
                     if(g_rate == 0.){
                         n_replications[bac_index] = 0;
                     }else{
-                        n_replications[bac_index] = new PoissonDistribution(g_rate*tau_step).sample();
+                        n_replications[bac_index] = new PoissonDistribution(Math.abs(g_rate*tau_step)).sample();
                     }
 
 
