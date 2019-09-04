@@ -31,7 +31,7 @@ class BioSystem {
         this.time_elapsed = 0.;
         this.exit_time = 0.;
         this.immigration_index = 0;
-        this.tau = 0.2;
+        this.tau = 0.1;
         this.deterioration_rate = deterioration_rate;
         this.biofilm_threshold = biofilm_threshold;
 
@@ -288,7 +288,7 @@ class BioSystem {
         double det_min = 0.002, det_max = 0.004;
         double det_increment = (det_max - det_min)/(double)n_measurements;
         double duration = 240.; //10 days
-        String filename = String.format("varying_detRate-(%.4f-%.4f)_and_thresholdK-(%.4f-%.4f)-tau=0.2", det_min, det_max, K_min, K_max);
+        String filename = String.format("varying_detRate-(%.4f-%.4f)_and_thresholdK-(%.4f-%.4f)-tau=0.1", det_min, det_max, K_min, K_max);
         String[] headers = new String[]{"tau", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
         ArrayList<Databox> Databoxes = new ArrayList<>();
 
