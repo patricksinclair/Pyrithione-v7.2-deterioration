@@ -25,7 +25,7 @@
       <file leaf-file-name="Microhabitat.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Microhabitat.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-549">
+            <state relative-caret-position="-487">
               <caret line="15" column="36" lean-forward="false" selection-start-line="15" selection-start-column="36" selection-end-line="15" selection-end-column="36" />
               <folding>
                 <element signature="imports" expanded="true" />
@@ -37,8 +37,8 @@
       <file leaf-file-name="BioSystem.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/BioSystem.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="0">
-              <caret line="227" column="56" lean-forward="true" selection-start-line="227" selection-start-column="56" selection-end-line="227" selection-end-column="56" />
+            <state relative-caret-position="702">
+              <caret line="324" column="0" lean-forward="true" selection-start-line="324" selection-start-column="0" selection-end-line="324" selection-end-column="0" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -98,9 +98,9 @@
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="y" value="40" />
+    <option name="x" value="1920" />
     <option name="width" value="1920" />
-    <option name="height" value="1018" />
+    <option name="height" value="1080" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -280,7 +280,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="40" width="1920" height="1018" extended-state="6" />
+    <frame x="1920" y="0" width="1920" height="1080" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -595,7 +595,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/Microhabitat.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-549">
+        <state relative-caret-position="-487">
           <caret line="15" column="36" lean-forward="false" selection-start-line="15" selection-start-column="36" selection-end-line="15" selection-end-column="36" />
           <folding>
             <element signature="imports" expanded="true" />
@@ -605,8 +605,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/BioSystem.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="227" column="56" lean-forward="true" selection-start-line="227" selection-start-column="56" selection-end-line="227" selection-end-column="56" />
+        <state relative-caret-position="702">
+          <caret line="324" column="0" lean-forward="true" selection-start-line="324" selection-start-column="0" selection-end-line="324" selection-end-column="0" />
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
