@@ -41,7 +41,6 @@ class Microhabitat {
     }
 
     boolean atBiofilmThreshold(){
-        //double threshold_density = 0.8;
         return fractionFull() >= biofilm_threshold;}
 
     double migrate_rate(){
@@ -56,12 +55,15 @@ class Microhabitat {
     }
 
     private double phi_c(int index){
+        //pharmacodynamic function
         double cB = c/beta(index);
         return 1. - (6.*cB*cB)/(5. + cB*cB);
     }
 
 
     double[] replicationAndDeathRates(int index){
+        //returns either the growth rate and the uniform death rate if the bacteria is resistant,
+        //or the sums of the uniform and pharmacodyncamic death rates is the batceria is susceptible
         double phi_c_scaled = max_gRate*phi_c(index);
         double gRate = phi_c_scaled > 0. ? phi_c_scaled*(1. - getN()/(double)K) : 0.;
         double dRate = phi_c_scaled < 0. ? phi_c_scaled + uniform_dRate : uniform_dRate;

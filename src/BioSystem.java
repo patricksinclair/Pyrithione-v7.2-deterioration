@@ -9,7 +9,7 @@ class BioSystem {
     private Random rand = new Random();
 
     private double alpha, c_max; //steepness and max val of antimicrobial concn
-    private double scale = 2.71760274, sigma = 0.56002833; //mic distb shape parameters
+    private double scale, sigma; //mic distb shape parameters
     private ArrayList<Microhabitat> microhabitats;
     private double time_elapsed, exit_time; //exit time is the time it took for the biofilm to reach the thickness limit, if it did
     private int immigration_index;
@@ -19,7 +19,7 @@ class BioSystem {
     private double immigration_rate = 0.8;
     private double tau;
     private double delta_x = 5.;
-    private int thickness_limit = 10; //this is how big the system can get before we exit. should reduce overall simulation duration todo-change back to 50
+    private int thickness_limit = 10; //this is how big the system can get before we exit. should reduce overall simulation duration todo-change back to 50 for big runs
     private int n_detachments = 0, n_deaths = 0, n_replications = 0, n_immigrations = 0, n_tau_halves = 0; //last one is the number of times tau had to be halved due to double events
 
 
@@ -27,6 +27,8 @@ class BioSystem {
         //this constructor is used purely for the detachment rate determination in the biocide free environment
         this.alpha = 0.;
         this.c_max = 0.;
+        this.scale = 2.71760274;
+        this.sigma = 0.56002833;
         this.microhabitats = new ArrayList<>();
         this.time_elapsed = 0.;
         this.exit_time = 0.;
@@ -42,7 +44,7 @@ class BioSystem {
     }
 
     private BioSystem(double alpha, double c_max, double scale, double sigma, double tau_variable){
-
+        //constructor used to investigate the effects of varying tau step size
         this.alpha = alpha;
         this.c_max = c_max;
         this.scale = scale;
@@ -159,6 +161,7 @@ class BioSystem {
 
         whileloop:
         while(true){
+            //this loop is used for the modified tau leaping system
             replication_allocations = new int[system_size][];
             death_allocations = new int[system_size][];
             migration_allocations = new int[system_size][];
@@ -167,7 +170,7 @@ class BioSystem {
 
             for(int mh_index = 0; mh_index < system_size; mh_index++){
 
-                //we iterate through all the bacteria and
+                //we iterate through all the bacteria and calculate the events which they'll experience
                 int mh_pop = microhabitats.get(mh_index).getN();
                 int[] n_replications = new int[mh_pop];
                 int[] n_deaths = new int[mh_pop];
@@ -191,6 +194,7 @@ class BioSystem {
                         detachment_allocations[bac_index] = new PoissonDistribution(deterioration_rate*tau_step).sample();
 
                         if(detachment_allocations[bac_index] > 1){
+                            //a bacteria can't detach more than once, so if this gets assigned, then we try again with a smaller tau
                             n_tau_halves++;
                             tau_step /= 2.;
                             continue whileloop;
@@ -219,6 +223,7 @@ class BioSystem {
                         n_deaths[bac_index] = new PoissonDistribution(Math.abs(d_rate)*tau_step).sample();
 
                         if(n_deaths[bac_index] > 1){
+                            //again, a bacteria can't die twice, so we try again
                             n_tau_halves++;
                             tau_step /= 2.;
                             continue whileloop;
@@ -271,6 +276,7 @@ class BioSystem {
         immigrate(immigration_index, n_immigrants);
         n_immigrations += n_immigrants;
         updateBiofilmSize();
+        //update the time elapsed in the system by the value of tau used in the final events
         time_elapsed += tau_step;
     }
 
