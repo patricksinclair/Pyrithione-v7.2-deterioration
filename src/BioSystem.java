@@ -19,11 +19,11 @@ class BioSystem {
     private double immigration_rate = 0.8;
     private double tau;
     private double delta_x = 5.;
-    private int thickness_limit = 10; //this is how big the system can get before we exit. should reduce overall simulation duration todo-change back to 50 for big runs
+    private int thickness_limit = 6; //this is how big the system can get before we exit. should reduce overall simulation duration todo-change back to 50 for big runs
     private int n_detachments = 0, n_deaths = 0, n_replications = 0, n_immigrations = 0, n_tau_halves = 0; //last one is the number of times tau had to be halved due to double events
 
 
-    public BioSystem(double deterioration_rate, double biofilm_threshold){
+    public BioSystem(double deterioration_rate, double biofilm_threshold, double tau){
         //this constructor is used purely for the detachment rate determination in the biocide free environment
         this.alpha = 0.;
         this.c_max = 0.;
@@ -33,7 +33,7 @@ class BioSystem {
         this.time_elapsed = 0.;
         this.exit_time = 0.;
         this.immigration_index = 0;
-        this.tau = 0.005;
+        this.tau = tau;
         this.deterioration_rate = deterioration_rate;
         this.biofilm_threshold = biofilm_threshold;
 
@@ -283,24 +283,24 @@ class BioSystem {
 
 
 
-    public static void varyingDeteriorationAndThreshold(){
+    public static void varyingDeteriorationAndThreshold(double tau_val){
         long startTime = System.currentTimeMillis();
         //this method varies the deterioration rate and the threshold biofilm density, returns the thickness reached and the event counters
         int n_reps = 15; //the number of times each simulation is repeated for
         int n_measurements = 20; //the number of measurements taken for deterioration and rho
 
-        double K_min = 0.4, K_max = 0.9;
+        double K_min = 0.5, K_max = 1.0;
         double K_increment = (K_max - K_min)/(double)n_measurements;
         double det_min = 0.002, det_max = 0.004;
         double det_increment = (det_max - det_min)/(double)n_measurements;
         double duration = 240.; //10 days
-        String filename = String.format("varying_detRate-(%.4f-%.4f)_and_thresholdK-(%.4f-%.4f)-tau=0.005", det_min, det_max, K_min, K_max);
+        String filename = String.format("varying_detRate-(%.4f-%.4f)_and_thresholdK-(%.4f-%.4f)-tau=%.3f", det_min, det_max, K_min, K_max, tau_val);
         String[] headers = new String[]{"tau", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
         ArrayList<Databox> Databoxes = new ArrayList<>();
 
         for(double thresh_K = K_min; thresh_K <= K_max; thresh_K+=K_increment){
             for(double det_r = det_min; det_r <= det_max; det_r+=det_increment){
-                Databox db = BioSystem.varyingDeteriorationAndThreshold_subroutine(n_reps, duration, thresh_K, det_r);
+                Databox db = BioSystem.varyingDeteriorationAndThreshold_subroutine(n_reps, duration, thresh_K, det_r, tau_val);
                 Databoxes.add(db);
             }
         }
@@ -317,11 +317,11 @@ class BioSystem {
 
 
 
-    public static Databox varyingDeteriorationAndThreshold_subroutine(int n_reps, double duration, double thresh_K, double det_r){
+    public static Databox varyingDeteriorationAndThreshold_subroutine(int n_reps, double duration, double thresh_K, double det_r, double tau_val){
 
         Databox[] databoxes = new Databox[n_reps];
 
-        IntStream.range(0, n_reps).parallel().forEach(i -> databoxes[i] = BioSystem.varyingDeteriorationAndThreshold_subsubroutine(i, duration, thresh_K, det_r));
+        IntStream.range(0, n_reps).parallel().forEach(i -> databoxes[i] = BioSystem.varyingDeteriorationAndThreshold_subsubroutine(i, duration, thresh_K, det_r, tau_val));
 
         return Databox.averagedMeasurementsAndStDev(databoxes);
     }
@@ -329,12 +329,12 @@ class BioSystem {
 
 
 
-    public static Databox varyingDeteriorationAndThreshold_subsubroutine(int i, double duration, double thresh_K, double det_r){
+    public static Databox varyingDeteriorationAndThreshold_subsubroutine(int i, double duration, double thresh_K, double det_r, double tau_val){
         int nMeasurements = 10;
         double interval = duration/nMeasurements;
         boolean alreadyRecorded = false;
 
-        BioSystem bs = new BioSystem(det_r, thresh_K);
+        BioSystem bs = new BioSystem(det_r, thresh_K, tau_val);
         while(bs.time_elapsed <= (duration+0.001*interval)){
             if((bs.getTimeElapsed()%interval >= 0. && bs.getTimeElapsed()%interval <= 0.02*interval) && !alreadyRecorded){
 
