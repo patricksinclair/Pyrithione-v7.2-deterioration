@@ -384,7 +384,7 @@ class BioSystem {
         double tau_min = 0.01, tau_max = 1.2;
         double tau_increment = (tau_max - tau_min)/(double)n_measurements;
         double duration = 1000.; //1000 hours
-        String filename = String.format("varying_tauStep-(%.4f-%.4f)-v2", tau_min, tau_max);
+        String filename = String.format("varying_tauStep-(%.4f-%.4f)-old_v2", tau_min, tau_max);
         String[] headers = new String[]{"tau", "exit_time", "exit_time_stDev", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
 
         ArrayList<Databox> Databoxes = new ArrayList<>();
