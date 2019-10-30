@@ -7,6 +7,12 @@ import java.util.stream.IntStream;
 class BioSystem {
 
     private Random rand = new Random();
+    //need to initialise these in the performAction method in order to incorporate the tau halving
+    private PoissonDistribution poiss_imigration;
+    private PoissonDistribution poiss_deterioration;
+    private PoissonDistribution poiss_migration;
+    private PoissonDistribution poiss_migration_edge;
+
 
     private double alpha, c_max; //steepness and max val of antimicrobial concn
     private double scale, sigma; //mic distb shape parameters
@@ -17,6 +23,7 @@ class BioSystem {
     private double deterioration_rate;
     private double biofilm_threshold;
     private double immigration_rate = 0.8;
+    private double migration_rate = 0.2;
     private double tau;
     private double delta_x = 5.;
     private int thickness_limit = 6; //this is how big the system can get before we exit. should reduce overall simulation duration todo-change back to 50 for big runs
@@ -24,9 +31,11 @@ class BioSystem {
 
 
     public BioSystem(double deterioration_rate, double biofilm_threshold, double tau){
+
         //this constructor is used purely for the detachment rate determination in the biocide free environment
         this.alpha = 0.;
         this.c_max = 0.;
+        //this scale and sigma correspond to 99% susceptible
         this.scale = 2.71760274;
         this.sigma = 0.56002833;
         this.microhabitats = new ArrayList<>();
@@ -63,8 +72,7 @@ class BioSystem {
         microhabitats.get(0).addARandomBacterium_x_N(5);
     }
 
-    private double getDeterioration_rate(){return deterioration_rate;}
-    private double getBiofilm_threshold(){return biofilm_threshold;}
+
     private int getDetachments_counter(){return detachments_counter;}
     private int getDeaths_counter(){return deaths_counter;}
     private int getReplications_counter(){return replications_counter;}
@@ -74,6 +82,7 @@ class BioSystem {
     private double getTimeElapsed(){return time_elapsed;}
     private double getExit_time(){return exit_time;}
     private int getSystemSize(){return microhabitats.size();}
+
 
     private int getTotalN(){
         int runningTotal = 0;
@@ -103,6 +112,14 @@ class BioSystem {
     private void immigrate(int mh_index, int n_immigrants){
         microhabitats.get(mh_index).addARandomBacterium_x_N(n_immigrants);
     }
+
+
+
+
+    private static double calc_C_i(int i, double c_max, double alpha, double delta_x){
+        return c_max*Math.exp(-alpha*i*delta_x);
+    }
+
 
     public void migrate(int mh_index, int bac_index){
 
@@ -168,13 +185,13 @@ class BioSystem {
             original_popsizes = new int[system_size];
             detachment_allocations = new int[microhabitats.get(immigration_index).getN()];
 
-                for(int mh_index = 0; mh_index < system_size; mh_index++){
+            for(int mh_index = 0; mh_index < system_size; mh_index++){
 
-                    //we iterate through all the bacteria and calculate the events which they'll experience
-                    int mh_pop = microhabitats.get(mh_index).getN();
-                    int[] n_replications = new int[mh_pop];
-                    int[] n_deaths = new int[mh_pop];
-                    int[] n_migrations = new int[mh_pop];
+                //we iterate through all the bacteria and calculate the events which they'll experience
+                int mh_pop = microhabitats.get(mh_index).getN();
+                int[] n_replications = new int[mh_pop];
+                int[] n_deaths = new int[mh_pop];
+                int[] n_migrations = new int[mh_pop];
 
                 for(int bac_index = 0; bac_index < mh_pop; bac_index++){
 
@@ -281,21 +298,19 @@ class BioSystem {
     }
 
 
-
-
     public static void varyingDeteriorationAndThreshold(double tau_val){
         long startTime = System.currentTimeMillis();
         //this method varies the deterioration rate and the threshold biofilm density, returns the thickness reached and the event counters
         int n_reps = 15; //the number of times each simulation is repeated for
         int n_measurements = 20; //the number of measurements taken for deterioration and rho
 
-        double K_min = 0.5, K_max = 1.0;
+        double K_min = 0.45, K_max = 0.95;
         double K_increment = (K_max - K_min)/(double)n_measurements;
-        double det_min = 0.002, det_max = 0.004;
+        double det_min = 0.002, det_max = 0.02;
         double det_increment = (det_max - det_min)/(double)n_measurements;
         double duration = 240.; //10 days
         String filename = String.format("varying_detRate-(%.4f-%.4f)_and_thresholdK-(%.4f-%.4f)-tau=%.3f", det_min, det_max, K_min, K_max, tau_val);
-        String[] headers = new String[]{"tau", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
+        String[] headers = new String[]{"tau", "exit_time", "exit_time_stDev", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
         ArrayList<Databox> Databoxes = new ArrayList<>();
 
         for(double thresh_K = K_min; thresh_K <= K_max; thresh_K+=K_increment){
@@ -330,7 +345,7 @@ class BioSystem {
 
 
     public static Databox varyingDeteriorationAndThreshold_subsubroutine(int i, double duration, double thresh_K, double det_r, double tau_val){
-        int nMeasurements = 10;
+        int nMeasurements = 50;
         double interval = duration/nMeasurements;
         boolean alreadyRecorded = false;
 
@@ -339,7 +354,7 @@ class BioSystem {
             if((bs.getTimeElapsed()%interval >= 0. && bs.getTimeElapsed()%interval <= 0.02*interval) && !alreadyRecorded){
 
                 int total_N = bs.getTotalN();
-                System.out.println("rep : "+i+"\ttau: "+bs.tau+"\tK*: "+bs.biofilm_threshold+"\td_rate: "+bs.getDeterioration_rate()+"\tt: "+bs.getTimeElapsed()+"\tpop size: "+total_N+"\tbf_edge: "+bs.getBiofilmEdge()+"\tsystem size: "+bs.getSystemSize()+"\tc_max: "+bs.c_max);
+                System.out.println("rep : "+i+"\ttau: "+bs.tau+"\tK*: "+bs.biofilm_threshold+"\td_rate: "+bs.deterioration_rate+"\tt: "+bs.getTimeElapsed()+"\tpop size: "+total_N+"\tbf_edge: "+bs.getBiofilmEdge()+"\tsystem size: "+bs.getSystemSize()+"\tc_max: "+bs.c_max);
                 alreadyRecorded = true;
             }
 
@@ -350,8 +365,11 @@ class BioSystem {
 
         double[] counters = new double[]{bs.deaths_counter, bs.detachments_counter, bs.immigrations_counter, bs.replications_counter, bs.tau_halves_counter};
 
-        return new Databox(bs.tau, bs.biofilm_threshold, bs.deterioration_rate,  bs.getBiofilmThickness(), counters);
+        return new Databox(bs.tau, bs.exit_time, bs.biofilm_threshold, bs.deterioration_rate,  bs.getBiofilmThickness(), counters);
     }
+
+
+
 
 
 
@@ -366,8 +384,8 @@ class BioSystem {
         double tau_min = 0.01, tau_max = 1.2;
         double tau_increment = (tau_max - tau_min)/(double)n_measurements;
         double duration = 1000.; //1000 hours
-        String filename = String.format("varying_tauStep-(%.4f-%.4f)", tau_min, tau_max);
-        String[] headers = new String[]{"tau", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
+        String filename = String.format("varying_tauStep-(%.4f-%.4f)-v2", tau_min, tau_max);
+        String[] headers = new String[]{"tau", "exit_time", "exit_time_stDev", "K*", "det_rate", "thickness", "thick_stDev", "n_deaths", "n_detachments", "n_immigrations", "n_replications", "n_tau_halves"};
 
         ArrayList<Databox> Databoxes = new ArrayList<>();
 
@@ -401,7 +419,7 @@ class BioSystem {
         double c_max = 0.;
         double alpha = 0.01;
 
-        int nMeasurements = 100;
+        int nMeasurements = 10;
         double interval = duration/nMeasurements;
         boolean alreadyRecorded = false;
 
@@ -422,7 +440,7 @@ class BioSystem {
 
         double[] counters = new double[]{bs.deaths_counter, bs.detachments_counter, bs.immigrations_counter, bs.replications_counter, bs.tau_halves_counter};
 
-        return new Databox(bs.tau, bs.biofilm_threshold, bs.deterioration_rate,  bs.getBiofilmThickness(), counters);
+        return new Databox(bs.tau, bs.exit_time, bs.biofilm_threshold, bs.deterioration_rate,  bs.getBiofilmThickness(), counters);
     }
 
 
@@ -430,14 +448,5 @@ class BioSystem {
 
 
 
-
-
-
-
-
-
-    private static double calc_C_i(int i, double c_max, double alpha, double delta_x){
-        return c_max*Math.exp(-alpha*i*delta_x);
-    }
 
 }
