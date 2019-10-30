@@ -20,7 +20,7 @@ class BioSystem {
     private double tau;
     private double delta_x = 5.;
     private int thickness_limit = 6; //this is how big the system can get before we exit. should reduce overall simulation duration todo-change back to 50 for big runs
-    private int n_detachments = 0, n_deaths = 0, n_replications = 0, n_immigrations = 0, n_tau_halves = 0; //last one is the number of times tau had to be halved due to double events
+    private int detachments_counter = 0, deaths_counter = 0, replications_counter = 0, immigrations_counter = 0, tau_halves_counter = 0; //last one is the number of times tau had to be halved due to double events
 
 
     public BioSystem(double deterioration_rate, double biofilm_threshold, double tau){
@@ -65,11 +65,11 @@ class BioSystem {
 
     private double getDeterioration_rate(){return deterioration_rate;}
     private double getBiofilm_threshold(){return biofilm_threshold;}
-    private int getN_detachments(){return n_detachments;}
-    private int getN_deaths(){return n_deaths;}
-    private int getN_replications(){return n_replications;}
-    private int getN_immigrations(){return n_immigrations;}
-    private int getN_tau_halves(){return n_tau_halves;}
+    private int getDetachments_counter(){return detachments_counter;}
+    private int getDeaths_counter(){return deaths_counter;}
+    private int getReplications_counter(){return replications_counter;}
+    private int getImmigrations_counter(){return immigrations_counter;}
+    private int getTau_halves_counter(){return tau_halves_counter;}
 
     private double getTimeElapsed(){return time_elapsed;}
     private double getExit_time(){return exit_time;}
@@ -182,7 +182,7 @@ class BioSystem {
                     n_migrations[bac_index] = new PoissonDistribution(microhabitats.get(mh_index).migrate_rate()*tau_step).sample();
 
                     if(n_migrations[bac_index] > 1){
-                        n_tau_halves++;
+                        tau_halves_counter++;
                         tau_step /= 2.;
                         continue whileloop;
                     }
@@ -195,7 +195,7 @@ class BioSystem {
 
                         if(detachment_allocations[bac_index] > 1){
                             //a bacteria can't detach more than once, so if this gets assigned, then we try again with a smaller tau
-                            n_tau_halves++;
+                            tau_halves_counter++;
                             tau_step /= 2.;
                             continue whileloop;
                         }
@@ -224,7 +224,7 @@ class BioSystem {
 
                         if(n_deaths[bac_index] > 1){
                             //again, a bacteria can't die twice, so we try again
-                            n_tau_halves++;
+                            tau_halves_counter++;
                             tau_step /= 2.;
                             continue whileloop;
                         }
@@ -252,12 +252,12 @@ class BioSystem {
 
                 if(death_allocations[mh_index][bac_index]!= 0) {
                     microhabitats.get(mh_index).removeABacterium(bac_index);
-                    n_deaths++;
+                    deaths_counter++;
                 }
 
                 else{
                     microhabitats.get(mh_index).replicateABacterium_x_N(bac_index, replication_allocations[mh_index][bac_index]);
-                    n_replications += replication_allocations[mh_index][bac_index];
+                    replications_counter += replication_allocations[mh_index][bac_index];
 
                     if(system_size > 1){
                         if(migration_allocations[mh_index][bac_index] != 0) migrate(mh_index, bac_index);
@@ -266,7 +266,7 @@ class BioSystem {
                     if(mh_index == immigration_index){
                         if(detachment_allocations[bac_index] != 0) {
                             microhabitats.get(mh_index).removeABacterium(bac_index);
-                            n_detachments++;
+                            detachments_counter++;
                         }
                     }
                 }
@@ -274,7 +274,7 @@ class BioSystem {
         }
 
         immigrate(immigration_index, n_immigrants);
-        n_immigrations += n_immigrants;
+        immigrations_counter += n_immigrants;
         updateBiofilmSize();
         //update the time elapsed in the system by the value of tau used in the final events
         time_elapsed += tau_step;
@@ -348,7 +348,7 @@ class BioSystem {
             bs.performAction();
         }
 
-        double[] counters = new double[]{bs.getN_deaths(), bs.getN_detachments(), bs.getN_immigrations(), bs.getN_replications(), bs.getN_tau_halves()};
+        double[] counters = new double[]{bs.deaths_counter, bs.detachments_counter, bs.immigrations_counter, bs.replications_counter, bs.tau_halves_counter};
 
         return new Databox(bs.tau, bs.biofilm_threshold, bs.deterioration_rate,  bs.getBiofilmThickness(), counters);
     }
@@ -401,17 +401,17 @@ class BioSystem {
         double c_max = 0.;
         double alpha = 0.01;
 
-        int nMeasurements = 10;
+        int nMeasurements = 100;
         double interval = duration/nMeasurements;
         boolean alreadyRecorded = false;
 
         BioSystem bs = new BioSystem(alpha, c_max, scale, sigma, tau);
 
         while(bs.time_elapsed <= (duration+0.001*interval)){
-            if((bs.getTimeElapsed()%interval >= 0. && bs.getTimeElapsed()%interval <= 0.02*interval) && !alreadyRecorded){
+            if((bs.getTimeElapsed()%interval <= 0.02*interval) && !alreadyRecorded){
 
                 int total_N = bs.getTotalN();
-                System.out.println("tau: "+bs.tau+"\tK*: "+bs.biofilm_threshold+"\td_rate: "+bs.getDeterioration_rate()+"\trep : "+i+"\tt: "+bs.getTimeElapsed()+"\tpop size: "+total_N+"\tbf_edge: "+bs.getBiofilmEdge()+"\tsystem size: "+bs.getSystemSize()+"\tc_max: "+bs.c_max);
+                System.out.println("rep : "+i+"\ttau: "+bs.tau+"\ttau_1/2s: "+bs.tau_halves_counter+"\tK*: "+bs.biofilm_threshold+"\td_rate: "+bs.deterioration_rate+"\tt: "+bs.getTimeElapsed()+"\tpop size: "+total_N+"\tbf_edge: "+bs.getBiofilmEdge()+"\tsystem size: "+bs.getSystemSize()+"\tc_max: "+bs.c_max);
                 alreadyRecorded = true;
             }
 
@@ -420,7 +420,7 @@ class BioSystem {
             bs.performAction();
         }
 
-        double[] counters = new double[]{bs.getN_deaths(), bs.getN_detachments(), bs.getN_immigrations(), bs.getN_replications(), bs.getN_tau_halves()};
+        double[] counters = new double[]{bs.deaths_counter, bs.detachments_counter, bs.immigrations_counter, bs.replications_counter, bs.tau_halves_counter};
 
         return new Databox(bs.tau, bs.biofilm_threshold, bs.deterioration_rate,  bs.getBiofilmThickness(), counters);
     }
