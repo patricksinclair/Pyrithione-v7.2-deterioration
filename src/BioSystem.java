@@ -168,13 +168,13 @@ class BioSystem {
             original_popsizes = new int[system_size];
             detachment_allocations = new int[microhabitats.get(immigration_index).getN()];
 
-            for(int mh_index = 0; mh_index < system_size; mh_index++){
+                for(int mh_index = 0; mh_index < system_size; mh_index++){
 
-                //we iterate through all the bacteria and calculate the events which they'll experience
-                int mh_pop = microhabitats.get(mh_index).getN();
-                int[] n_replications = new int[mh_pop];
-                int[] n_deaths = new int[mh_pop];
-                int[] n_migrations = new int[mh_pop];
+                    //we iterate through all the bacteria and calculate the events which they'll experience
+                    int mh_pop = microhabitats.get(mh_index).getN();
+                    int[] n_replications = new int[mh_pop];
+                    int[] n_deaths = new int[mh_pop];
+                    int[] n_migrations = new int[mh_pop];
 
                 for(int bac_index = 0; bac_index < mh_pop; bac_index++){
 
@@ -359,7 +359,7 @@ class BioSystem {
         long startTime = System.currentTimeMillis();
         //this method varies the deterioration rate and the threshold biofilm density, returns the thickness reached and the event counters
         int n_reps = 20; //the number of times each simulation is repeated for
-        int n_measurements = 119; //the number of values used taken for tau
+        int n_measurements = 64; //the number of values used taken for tau
         //int n_reps = 4; //the number of times each simulation is repeated for
         //int n_measurements = 3; //the number of values used taken for tau
 
@@ -398,7 +398,7 @@ class BioSystem {
 
     public static Databox varyingTauSubsubroutine(int i, double duration, double scale, double sigma, double tau){
 
-        double c_max = 10.;
+        double c_max = 0.;
         double alpha = 0.01;
 
         int nMeasurements = 10;

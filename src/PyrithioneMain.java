@@ -8,7 +8,7 @@ public class PyrithioneMain {
 
         double tau_val = 0.02;
 
-        BioSystem.varyingDeteriorationAndThreshold(tau_val);
-        //BioSystem.varyingTauStep(scale_99, sigma_99);
+        //BioSystem.varyingDeteriorationAndThreshold(tau_val);
+        BioSystem.varyingTauStep(scale_99, sigma_99);
     }
 }
