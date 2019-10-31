@@ -14,4 +14,3 @@ public class PyrithioneMain {
         BioSystem.varyingTauStep(scale_99, sigma_99);
     }
 }
-
